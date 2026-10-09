@@ -1,0 +1,213 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+:root{--bg:#121211;--fg:#F0EEE6;--mute:#8d8a80;--acc:#D97757;--acc2:#E9B872;--blue:#6A9BCC;--green:#8FB573;}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1280px;height:720px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:Inter,"Noto Color Emoji",sans-serif}
+.scene{position:absolute;inset:0;opacity:0}
+.mono{font-family:"DejaVu Sans Mono",monospace}
+.tag{position:absolute;left:64px;top:52px;font-size:15px;letter-spacing:.32em;color:var(--acc);font-weight:600}
+.h{position:absolute;left:64px;top:78px;font-size:54px;font-weight:800;letter-spacing:-.02em}
+.cap{position:absolute;left:64px;bottom:70px;font-size:20px;color:var(--mute)}
+#grain{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,rgba(217,119,87,.10),transparent 60%)}
+#hud{position:absolute;left:0;right:0;bottom:0;height:4px;background:#2a2926}
+#bar{height:100%;width:0;background:var(--acc)}
+#clock{position:absolute;right:64px;top:52px;font-size:15px;color:var(--mute);letter-spacing:.1em}
+#flash{position:absolute;inset:0;background:var(--fg);opacity:0;pointer-events:none}
+/* s1 */
+#s1 .big{position:absolute;left:0;right:0;top:270px;text-align:center;font-size:76px;font-weight:800;letter-spacing:-.03em}
+#s1 .sub{position:absolute;left:0;right:0;top:380px;text-align:center;font-size:30px;color:var(--mute)}
+.caret{display:inline-block;width:.08em;height:.9em;background:var(--acc);vertical-align:-.08em;margin-left:4px}
+/* s2 */
+#files{position:absolute;left:64px;top:170px;width:560px;height:440px;overflow:hidden;font-size:14px;line-height:22px;color:#a9a597;
+ -webkit-mask-image:linear-gradient(transparent,#000 15%,#000 85%,transparent)}
+#files div{white-space:nowrap}
+#files div.hit{color:var(--acc2)}
+.stat{position:absolute;left:680px;width:540px}
+.stat .n{font-size:64px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.stat .l{font-size:16px;color:var(--mute);letter-spacing:.06em;margin-top:-4px}
+.brow{position:absolute;left:680px;width:540px;height:22px;font-size:13px;color:var(--mute)}
+.brow .b{position:absolute;left:150px;top:5px;height:12px;background:var(--acc);border-radius:2px}
+.brow .v{position:absolute;top:2px;font-size:13px;color:var(--fg)}
+/* s3 */
+#editor{position:absolute;left:64px;top:170px;width:1152px;height:440px;background:#1c1b19;border:1px solid #2e2d29;border-radius:12px;overflow:hidden}
+#editor .top{height:36px;background:#222120;display:flex;align-items:center;padding:0 14px;gap:8px}
+#editor .dot{width:12px;height:12px;border-radius:50%}
+#editor .fn{margin-left:14px;font-size:13px;color:var(--mute)}
+#code{padding:18px 26px;font-size:19px;line-height:29px;white-space:pre;color:var(--fg)}
+.k{color:#D97757}.s{color:#A8C686}.c{color:#7d7a70;font-style:italic}.f{color:#7FB2E5}.p{color:#E9B872}
+/* s4 */
+#house{position:absolute;left:64px;top:160px}
+#phone{position:absolute;left:880px;top:150px;width:290px;height:470px;border-radius:38px;background:#1c1b19;border:2px solid #34322e;overflow:hidden}
+#phone .time{position:absolute;top:60px;left:0;right:0;text-align:center;font-size:58px;font-weight:300}
+#phone .date{position:absolute;top:132px;left:0;right:0;text-align:center;font-size:14px;color:var(--mute)}
+#notif{position:absolute;left:14px;right:14px;top:200px;background:rgba(240,238,230,.12);border-radius:16px;padding:12px 14px;font-size:14px;line-height:19px}
+#notif b{display:block;font-size:12px;color:var(--mute);font-weight:600;margin-bottom:3px;letter-spacing:.04em}
+/* s5 */
+#words{position:absolute;left:64px;right:64px;top:175px;display:flex;flex-wrap:wrap;gap:16px}
+#words span{font-size:40px;font-weight:700;padding:10px 22px;border-radius:999px;border:2px solid #34322e;opacity:0}
+#langs{position:absolute;left:64px;right:64px;bottom:76px;font-size:30px;color:var(--mute);white-space:nowrap}
+/* s6 */
+#s6 .l1{position:absolute;left:0;right:0;top:200px;text-align:center;font-size:30px;color:var(--mute)}
+#s6 .l2{position:absolute;left:0;right:0;top:250px;text-align:center;font-size:58px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+#s6 .l2 em{font-style:normal;color:var(--acc)}
+#end{position:absolute;inset:0;opacity:0;background:var(--bg)}
+#end .logo{position:absolute;left:0;right:0;top:250px;text-align:center;font-size:110px;font-weight:800;letter-spacing:-.04em}
+#end .q{position:absolute;left:0;right:0;top:420px;text-align:center;font-size:32px;color:var(--fg)}
+#end svg{vertical-align:-6px;margin-right:18px}
+</style></head>
+<body>
+<div id="grain"></div>
+
+<section class="scene" id="s1">
+  <div class="big"><span id="t1"></span><span class="caret" id="c1"></span></div>
+  <div class="sub" id="t1b">Ho 15 secondi per sorprenderti.</div>
+</section>
+
+<section class="scene" id="s2">
+  <div class="tag">01 · LEGGO</div>
+  <div class="h">Ho letto il tuo repository.</div>
+  <div id="files" class="mono"><div id="fileroll"></div></div>
+  <div class="stat" style="top:170px"><div class="n" id="n1">0</div><div class="l">FILE GROOVY ANALIZZATI</div></div>
+  <div class="stat" style="top:270px"><div class="n" id="n2">0</div><div class="l">RIGHE DI CODICE</div></div>
+  <div class="stat" style="top:370px"><div class="n" id="n3">0</div><div class="l">COMMIT NELLA STORIA</div></div>
+  <div id="bars"></div>
+  <div class="cap">SmartThingsPublic · prima ancora che tu finissi di leggere il prompt.</div>
+</section>
+
+<section class="scene" id="s3">
+  <div class="tag">02 · SCRIVO</div>
+  <div class="h">Codice nuovo, nel tuo stile.</div>
+  <div id="editor">
+    <div class="top"><span class="dot" style="background:#e5625a"></span><span class="dot" style="background:#e9b44c"></span><span class="dot" style="background:#5fbf61"></span>
+    <span class="fn mono">smartapps/claude/buonanotte-casa.groovy</span></div>
+    <div id="code" class="mono"></div>
+  </div>
+</section>
+
+<section class="scene" id="s4">
+  <div class="tag">03 · COSTRUISCO</div>
+  <div class="h">E lo faccio funzionare.</div>
+  <svg id="house" width="760" height="460" viewBox="0 0 760 460"></svg>
+  <div id="phone"><div class="time">23:41</div><div class="date">venerdì 9 ottobre</div>
+    <div id="notif"><b>🏠 BUONANOTTE CASA · ORA</b>Sei uscito. 6 luci spente, porta chiusa. Casa al sicuro. 🌙</div></div>
+</section>
+
+<section class="scene" id="s5">
+  <div class="tag">04 · E MOLTO ALTRO</div>
+  <div class="h">Un solo collega. Tanti mestieri.</div>
+  <div id="words"></div>
+  <div id="langs">Ciao · Hello · Hola · Bonjour · Hallo · こんにちは · Olá · 你好 · Привет · مرحبا</div>
+</section>
+
+<section class="scene" id="s6">
+  <div class="l1">Ah, quasi dimenticavo…</div>
+  <div class="l2">questo video — animazioni e <em>musica</em> —<br>l'ho scritto io. <em>In codice.</em></div>
+</section>
+
+<div id="end">
+  <div class="logo"><svg width="96" height="96" viewBox="-50 -50 100 100"><g fill="#D97757" id="spark"></g></svg>Claude</div>
+  <div class="q">Allora, cosa costruiamo insieme?</div>
+</div>
+
+<div id="clock" class="mono">00:00 / 00:15</div>
+<div id="hud"><div id="bar"></div></div>
+<div id="flash"></div>
+
+<script>
+const PATHS = __PATHS__;
+const $ = id => document.getElementById(id);
+const clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
+const ease=x=>{x=clamp(x);return 1-Math.pow(1-x,3)};
+const easeIO=x=>{x=clamp(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2};
+const prog=(t,a,b)=>clamp((t-a)/(b-a));
+const fmt=n=>Math.round(n).toLocaleString('it-IT');
+
+// ---------- build static DOM ----------
+$('fileroll').innerHTML = PATHS.concat(PATHS).map((p,i)=>`<div class="${i%7==3?'hit':''}">${p}</div>`).join('');
+const CAPS=[["Sensor",131],["Refresh",91],["Actuator",89],["Switch",73],["Configuration",68],["Battery",49]];
+$('bars').innerHTML = CAPS.map((c,i)=>`<div class="brow" style="top:${478+i*24}px"><span>${c[0]}</span><div class="b" id="b${i}"></div><span class="v" id="bv${i}">${c[1]}</span></div>`).join('');
+
+const SRC = [
+ [["c","// Quando esci di casa, Claude spegne tutto."]],
+ [["f","definition"],["","(name: "],["s","\"Buonanotte Casa\""],["",", namespace: "],["s","\"claude\""],["",")"]],
+ [["k","preferences"],[""," {"]],
+ [["",'  '],["f","input"],["",' '],["s",'"chi"'],["",', '],["s",'"capability.presenceSensor"']],
+ [["",'  '],["f","input"],["",' '],["s",'"luci"'],["",', '],["s",'"capability.switch"'],["",", "],["p","multiple"],["",": "],["k","true"]],
+ [["","}"]],
+ [["k","def"],["",' '],["f","installed"],["","() { "],["f","subscribe"],["","(chi, "],["s",'"presence.not present"'],["",", away) }"]],
+ [["k","def"],["",' '],["f","away"],["","(evt) {"]],
+ [["","  luci."],["f","off"],["","()"]],
+ [["","  "],["f","sendPush"],["","("],["s",'"Casa al sicuro. 🌙"'],["",")"]],
+ [["","}"]],
+];
+const TOK=[]; SRC.forEach((line,li)=>{line.forEach(([c,s])=>{for(const ch of Array.from(s))TOK.push([c,ch])}); if(li<SRC.length-1)TOK.push(["","\n"]);});
+function codeUpTo(n){let out="",cur=null,buf="";const flush=()=>{if(buf){out+=cur?`<span class="${cur}">${buf}</span>`:buf;buf=""}};
+ for(let i=0;i<Math.min(n,TOK.length);i++){const [c,ch]=TOK[i];if(c!==cur){flush();cur=c}buf+=ch.replace(/&/g,'&amp;').replace(/</g,'&lt;')}flush();return out}
+
+// house
+const ROOMS=[["Soggiorno",20,20,330,220],["Cucina",350,20,190,220],["Bagno",540,20,200,220],["Camera",20,240,260,200],["Studio",280,240,230,200],["Ingresso",510,240,230,200]];
+let svg='';ROOMS.forEach((r,i)=>{const[n,x,y,w,h]=r;
+ svg+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#1c1b19" stroke="#3a3833" stroke-width="3"/>`;
+ svg+=`<circle id="glow${i}" cx="${x+w/2}" cy="${y+h/2}" r="${Math.min(w,h)*.55}" fill="url(#g)"/>`;
+ svg+=`<circle id="bulb${i}" cx="${x+w/2}" cy="${y+h/2}" r="11" fill="#F3D27A"/>`;
+ svg+=`<text x="${x+14}" y="${y+28}" fill="#8d8a80" font-size="15" font-family="Inter">${n}</text>`;});
+svg='<defs><radialGradient id="g"><stop offset="0" stop-color="#F3D27A" stop-opacity=".55"/><stop offset="1" stop-color="#F3D27A" stop-opacity="0"/></radialGradient></defs>'+svg+
+ '<g id="walker"><circle r="13" fill="#D97757"/><text y="5" text-anchor="middle" font-size="14" fill="#121211" font-weight="800" font-family="Inter">A</text></g>'+
+ '<rect id="door" x="728" y="380" width="14" height="50" fill="#D97757"/>';
+$('house').innerHTML=svg;
+
+const WORDS=["🐞 Debug","🧪 Test","📊 Analisi dati","📝 Documenti","🔀 Pull request","🔎 Ricerca","⚙️ Automazioni","🌍 Traduzioni","🎨 Design","🎵 Musica"];
+$('words').innerHTML=WORDS.map((w,i)=>`<span id="w${i}">${w}</span>`).join('');
+
+// spark logo: 12 rays
+let sp='';for(let i=0;i<12;i++){const a=i*30;const L=i%2?34:46;sp+=`<rect x="-4.5" y="${-L}" width="9" height="${L}" rx="4.5" transform="rotate(${a})"/>`}
+$('spark').innerHTML=sp;
+
+// ---------- timeline ----------
+const SC={s1:[0,2.2],s2:[2.2,5.2],s3:[5.2,8.4],s4:[8.4,11.2],s5:[11.2,12.9],s6:[12.9,14.3]};
+function sceneAlpha(t,[a,b]){const fi=.18,fo=.14;return clamp(Math.min((t-a)/fi,(b-t)/fo))}
+
+window.render=function(t){
+ for(const k in SC){const el=$(k);const al=sceneAlpha(t,SC[k]);el.style.opacity=al;
+   const local=t-SC[k][0];el.style.transform=`translateY(${(1-ease(local/.35))*18}px) scale(${1+ (al<1&&t>SC[k][1]-.2?.02*(1-al):0)})`;}
+ // hud
+ $('bar').style.width=(t/15*100)+'%';
+ $('clock').textContent=`00:${String(Math.min(15,Math.floor(t))).padStart(2,'0')} / 00:15`;
+ // flash on cuts
+ let fl=0;for(const c of [2.2,5.2,8.4,11.2,12.9]){const d=t-c;if(d>=0&&d<.25)fl=Math.max(fl,.18*(1-d/.25))}
+ $('flash').style.opacity=fl;
+
+ // S1
+ {const txt="Ciao Antonio.";const n=Math.floor(prog(t,.15,1.0)*txt.length);$('t1').textContent=txt.slice(0,n);
+  $('c1').style.opacity=(Math.floor(t*3)%2==0||t<1.1)?1:0;
+  $('t1b').style.opacity=ease(prog(t,1.15,1.5));$('t1b').style.transform=`translateY(${(1-ease(prog(t,1.15,1.5)))*14}px)`;}
+ // S2
+ {const l=t-2.2;$('fileroll').style.transform=`translateY(${-l*520}px)`;
+  const p=easeIO(prog(l,.1,1.9));$('n1').textContent=fmt(381*p);$('n2').textContent=fmt(87009*p);$('n3').textContent=fmt(1225*p);
+  CAPS.forEach((c,i)=>{const w=c[1]/131*300*ease(prog(l,.5+i*.12,1.4+i*.12));$('b'+i).style.width=w+'px';$('bv'+i).style.left=(158+w)+'px';$('bv'+i).style.opacity=ease(prog(l,1.2+i*.12,1.5+i*.12))});}
+ // S3
+ {const l=t-5.2;const n=Math.floor(prog(l,.2,2.75)*TOK.length);$('code').innerHTML=codeUpTo(n)+(l<3.1?'<span class="caret"></span>':'');}
+ // S4
+ {const l=t-8.4;
+  // walker moves from Studio to door
+  const wp=easeIO(prog(l,.1,1.0));const x=395+(735-395)*wp, y=340+(405-340)*wp;
+  const w=$('walker');w.setAttribute('transform',`translate(${x},${y})`);w.style.opacity=1-prog(l,1.0,1.2);
+  $('door').setAttribute('fill',l>1.15?'#5fbf61':'#D97757');
+  ROOMS.forEach((r,i)=>{const off=prog(l,1.2+i*.16,1.3+i*.16);$('glow'+i).style.opacity=1-off;$('bulb'+i).setAttribute('fill',off>.5?'#3a3833':'#F3D27A')});
+  const np=ease(prog(l,2.15,2.5));$('notif').style.transform=`translateY(${(1-np)*-40}px)`;$('notif').style.opacity=np;}
+ // S5
+ {const l=t-11.2;WORDS.forEach((w,i)=>{const p=ease(prog(l,.05+i*.1,.25+i*.1));const e=$('w'+i);e.style.opacity=p;e.style.transform=`scale(${.6+.4*p})`;
+   e.style.borderColor=(l>.05+i*.1&&l<.3+i*.1)?'#D97757':'#34322e';});
+  $('langs').style.transform=`translateX(${-l*90}px)`;}
+ // S6
+ {const l=t-12.9;document.querySelector('#s6 .l2').style.opacity=ease(prog(l,.35,.6));}
+ // END
+ {const l=t-14.2;const p=ease(prog(l,0,.3));$('end').style.opacity=p;
+  $('spark').setAttribute('transform',`rotate(${t*60}) scale(${.4+.6*ease(prog(l,0,.4))})`);
+  document.querySelector('#end .q').style.opacity=ease(prog(l,.25,.5));
+  $('clock').style.opacity=1-p;}
+};
+render(0);
+</script>
+</body></html>
