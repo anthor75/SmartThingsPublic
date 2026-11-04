@@ -5,8 +5,8 @@ Mondo virtuale 3D (Three.js, un solo file): apri `index.html` in un browser.
 ## Cosa c'è sull'isola
 | Elemento | Misure |
 |---|---|
-| Isola tonda | Ø 15 m |
-| Anello esterno di sabbia e ghiaia | largo 1 m (da r 6,5 a r 7,5 m) |
+| Isola tonda | Ø 30 m |
+| Anello esterno di sabbia e ghiaia | largo 1 m (da r 14 a r 15 m) |
 | Suolo | terra mischiata ad argilla |
 | Pozza d'acqua piovana | Ø 4 m, profonda 3 m |
 | Blocco di roccia levigata | 3 × 4 × 2 m (~24 m³, ~65 t) |
