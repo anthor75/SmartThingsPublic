@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Isola nell'Ignoto</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Figtree:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: scena 3D a tutto schermo; un pannello-scheda in alto a sinistra, aiuto comandi in basso. Un solo look scuro, scelto di proposito (la nebbia dell'ignoto). */
+:root {
+  --void: #4b525b;        /* colore dell'ignoto */
+  --panel: rgba(24, 27, 31, 0.78);
+  --panel-line: rgba(214, 205, 188, 0.18);
+  --ink: #ece6da;         /* testo: pietra chiara */
+  --ink-dim: #a9a297;
+  --accent: #d9b26f;      /* sabbia al sole */
+  --water: #5fa3a6;
+  --font-display: "Marcellus", "Cinzel", Georgia, serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--void); color: var(--ink); font-family: var(--font-body); overflow: hidden; }
+#scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+
+.hud {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: max(16px, env(safe-area-inset-left, 0px));
+  width: min(330px, calc(100vw - 32px));
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: grid; gap: 12px;
+  padding: 14px 16px 16px;
+  z-index: 5;
+}
+.hud header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hud h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 1.45rem; letter-spacing: 0.02em; text-wrap: balance; }
+.hud .sub { margin: 2px 0 0; color: var(--ink-dim); font-size: 0.82rem; line-height: 1.4; }
+.toggle-panel { background: none; border: 1px solid var(--panel-line); color: var(--ink-dim); border-radius: 4px; font: 600 0.72rem var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; padding: 4px 8px; cursor: pointer; }
+.specs { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 5px 14px; font-size: 0.82rem; }
+.specs dt { color: var(--ink-dim); }
+.specs dd { margin: 0; font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 0.78rem; text-align: right; }
+.hud.collapsed .body { display: none; }
+.body { display: grid; gap: 12px; }
+.label { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin: 0; }
+.buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.buttons button {
+  background: rgba(236, 230, 218, 0.07); color: var(--ink);
+  border: 1px solid var(--panel-line); border-radius: 4px;
+  font: 400 0.8rem var(--font-body); padding: 6px 10px; cursor: pointer;
+}
+.buttons button:hover { background: rgba(236, 230, 218, 0.14); }
+.buttons button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.help {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100vw - 32px);
+  background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px;
+  padding: 7px 12px; font-size: 0.78rem; color: var(--ink-dim); text-align: center; z-index: 5;
+}
+.help kbd { font-family: var(--font-data); font-size: 0.72rem; color: var(--ink); border: 1px solid var(--panel-line); border-radius: 3px; padding: 0 4px; }
+.toast {
+  position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  font-family: var(--font-display); font-size: clamp(1.1rem, 3.5vw, 1.8rem); color: var(--ink);
+  text-shadow: 0 2px 18px rgba(0,0,0,.6); pointer-events: none; opacity: 0; transition: opacity .6s; z-index: 6; text-align: center;
+  width: calc(100vw - 32px);
+}
+.toast.show { opacity: 1; }
+.under { position: fixed; inset: 0; background: rgba(18, 62, 66, 0.55); pointer-events: none; z-index: 2; }
+.cross { position: fixed; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(236,230,218,.7); pointer-events: none; z-index: 4; }
+.alt { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(12px + env(safe-area-inset-top, 0px)); font-family: var(--font-data); font-size: 0.75rem; color: var(--ink-dim); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 4px; padding: 4px 8px; z-index: 5; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { .alt { top: auto; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); } }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+</head>
+<body>
+
+<canvas id="scene" tabindex="0" aria-label="Scena 3D dell'isola"></canvas>
+<div class="under" id="under" hidden></div>
+<div class="cross" id="cross" hidden></div>
+<div class="alt" id="alt">quota 0,00 m</div>
+
+<section class="hud" id="hud" aria-label="Scheda dell'isola">
+  <header>
+    <div>
+      <h1>Isola nell'Ignoto</h1>
+      <p class="sub">Un disco di terra e argilla sospeso nella nebbia. Oltre il bordo non si passa.</p>
+    </div>
+    <button class="toggle-panel" id="togglePanel" aria-expanded="true">Chiudi</button>
+  </header>
+  <div class="body">
+    <dl class="specs">
+      <dt>Isola</dt><dd>Ø 15 m · tonda</dd>
+      <dt>Anello esterno</dt><dd>sabbia e ghiaia · 1 m</dd>
+      <dt>Suolo</dt><dd>terra e argilla</dd>
+      <dt>Pozza piovana</dt><dd>Ø 4 m · prof. 3 m</dd>
+      <dt>Blocco levigato</dt><dd>3 × 4 × 2 m · ~65 t</dd>
+      <dt>Basamento</dt><dd>4 blocchi · 6 m</dd>
+      <dt>Torre</dt><dd>10 blocchi · 15 m</dd>
+    </dl>
+    <p class="label">Vista e azioni</p>
+    <div class="buttons">
+      <button id="btnMode" aria-pressed="false">Cammina sull'isola</button>
+      <button id="btnMeasures" aria-pressed="true">Misure</button>
+      <button id="btnRain" aria-pressed="false">Pioggia</button>
+      <button id="btnTower">Cima della torre</button>
+      <button id="btnAltar">Cima del basamento</button>
+    </div>
+  </div>
+</section>
+
+<div class="help" id="help"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+'use strict';
+
+/* ---------------- Dati dell'isola (metri) ---------------- */
+const ISLAND_R = 7.5;          // diametro 15 m
+const SAND_IN  = 6.5;          // anello di sabbia e ghiaia largo 1 m
+const EDGE_LIMIT = 7.15;       // oltre questo raggio: l'ignoto, invalicabile
+const POOL = { x: -1.5, z: 3.5, r: 2, depth: 3 };   // pozza Ø 4 m, profonda 3 m
+const WATER_Y = -0.35;         // livello dell'acqua piovana
+const BLOCK = { a: 3, b: 4, h: 2 };                  // blocco 3 × 4 × 2 m
+const TOWER_C = { x: -2.5, z: -2.5 };
+const ALTAR_C = { x: 3, z: 0 };
+
+/* ---------------- Utilità ---------------- */
+function rng(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const lerp = (a, b, t) => a + (b - a) * t;
+function vnoise(x, y, per, seed) {
+  const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy;
+  const h = (a, b) => { a = ((a % per) + per) % per; b = ((b % per) + per) % per; const s = Math.sin(a * 127.1 + b * 311.7 + seed * 74.7) * 43758.5453; return s - Math.floor(s); };
+  const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy);
+  return lerp(lerp(h(ix, iy), h(ix + 1, iy), u), lerp(h(ix, iy + 1), h(ix + 1, iy + 1), u), v);
+}
+function fbm(x, y, per, seed, oct = 4) { let a = 0.5, f = 1, s = 0; for (let o = 0; o < oct; o++) { s += a * vnoise(x * f, y * f, per * f, seed + o); a *= 0.5; f *= 2; } return s / (1 - Math.pow(0.5, oct)); }
+
+function canvasTex(size, paint, repeat = 1) {
+  const c = document.createElement('canvas'); c.width = c.height = size;
+  const ctx = c.getContext('2d'); const img = ctx.createImageData(size, size);
+  paint(img.data, size);
+  ctx.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat);
+  t.encoding = THREE.sRGBEncoding; t.anisotropy = 8;
+  return t;
+}
+function px(d, i, r, g, b) { d[i] = r; d[i + 1] = g; d[i + 2] = b; d[i + 3] = 255; }
+
+/* Terra mischiata ad argilla: bruno con chiazze rossastre e granuli */
+const soilTex = canvasTex(512, (d, n) => {
+  const R = rng(11);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = x / n * 8, v = y / n * 8;
+    const base = fbm(u, v, 8, 1);
+    const clay = Math.max(0, fbm(u * 0.5 + 3, v * 0.5, 4, 7, 3) - 0.5) * 2.4;
+    const grain = (R() - 0.5) * 22;
+    let r = 74 + base * 34, g = 58 + base * 26, b = 44 + base * 18;
+    r = lerp(r, 124, clay * 0.6); g = lerp(g, 80, clay * 0.6); b = lerp(b, 58, clay * 0.6);
+    px(d, (y * n + x) * 4, r + grain, g + grain * 0.8, b + grain * 0.6);
+  }
+});
+/* Sabbia e ghiaia */
+const sandTex = canvasTex(256, (d, n) => {
+  const R = rng(5);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const v = fbm(x / n * 6, y / n * 6, 6, 3, 3);
+    const g = (R() - 0.5) * 34;
+    const pebble = R() < 0.05 ? -50 + R() * 40 : 0;
+    px(d, (y * n + x) * 4, 196 + v * 26 + g + pebble, 178 + v * 22 + g + pebble, 136 + v * 18 + g * 0.7 + pebble * 0.9);
+  }
+});
+/* Roccia molto ben levigata: calcare chiaro con venature morbide */
+const stoneTex = canvasTex(512, (d, n) => {
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const u = x / n, v = y / n;
+    const w = fbm(u * 4, v * 4, 4, 21, 5);
+    const vein = Math.pow(Math.abs(Math.sin((u * 2 + v) * Math.PI * 2 + w * 7)), 18);
+    const cloud = fbm(u * 3, v * 3, 3, 33, 3);
+    const k = 178 + cloud * 30 - vein * 55;
+    px(d, (y * n + x) * 4, k + 6, k, k - 10);
+  }
+});
+/* Argilla bagnata delle pareti della pozza */
+const wetTex = canvasTex(256, (d, n) => {
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const v = fbm(x / n * 8, y / n * 4, 8, 9, 4);
+    px(d, (y * n + x) * 4, 70 + v * 40, 50 + v * 26, 36 + v * 18);
+  }
+});
+/* Roccia grezza */
+const rockTex = canvasTex(256, (d, n) => {
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const v = fbm(x / n * 6, y / n * 6, 6, 41, 5);
+    const k = 90 + v * 80;
+    px(d, (y * n + x) * 4, k, k * 0.97, k * 0.92);
+  }
+});
+
+/* ---------------- Renderer, scena, luci ---------------- */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const VOID = new THREE.Color(0x4b525b);
+const scene = new THREE.Scene();
+scene.background = VOID.clone();
+scene.fog = new THREE.FogExp2(VOID.clone(), 0.018);
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.05, 200);
+
+// Ambiente per i riflessi della pietra levigata
+(function envMap() {
+  const pm = new THREE.PMREMGenerator(renderer);
+  const env = new THREE.Scene();
+  const g = new THREE.SphereGeometry(50, 32, 16);
+  const cols = []; const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const t = (p.getY(i) / 50 + 1) / 2; const c = new THREE.Color().setRGB(lerp(0.18, 0.85, t), lerp(0.17, 0.86, t), lerp(0.15, 0.88, t)); cols.push(c.r, c.g, c.b); }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  env.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  scene.environment = pm.fromScene(env, 0.04).texture;
+})();
+
+scene.add(new THREE.HemisphereLight(0xc9d2dc, 0x4a3a2c, 0.75));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.35);
+sun.position.set(9, 22, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 18, bottom: -10, near: 1, far: 60 });
+sun.shadow.bias = -0.0006;
+sun.shadow.normalBias = 0.02;
+scene.add(sun);
+
+/* ---------------- Terreno ---------------- */
+const terrainY = (x, z) => { const d = Math.hypot(x, z); return d > SAND_IN ? -(d - SAND_IN) * 0.25 : 0; };
+
+// Suolo di terra e argilla con il foro della pozza
+const soilShape = new THREE.Shape(); soilShape.absarc(0, 0, SAND_IN, 0, Math.PI * 2, false);
+const hole = new THREE.Path(); hole.absarc(POOL.x, -POOL.z, POOL.r, 0, Math.PI * 2, true);
+soilShape.holes.push(hole);
+const soilGeo = new THREE.ShapeGeometry(soilShape, 96);
+soilGeo.rotateX(-Math.PI / 2);
+soilTex.repeat.set(0.28, 0.28);
+const soilMat = new THREE.MeshStandardMaterial({ map: soilTex, bumpMap: soilTex, bumpScale: 0.04, roughness: 0.95 });
+const soil = new THREE.Mesh(soilGeo, soilMat); soil.receiveShadow = true; scene.add(soil);
+
+// Anello di sabbia e ghiaia (1 m), leggermente digradante verso il bordo
+const ringGeo = new THREE.RingGeometry(SAND_IN, ISLAND_R, 128, 4);
+{ const p = ringGeo.attributes.position, uv = ringGeo.attributes.uv;
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); p.setZ(i, terrainY(x, y)); uv.setXY(i, x / 3, y / 3); }
+  ringGeo.rotateX(-Math.PI / 2); ringGeo.computeVertexNormals(); }
+const sand = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ map: sandTex, bumpMap: sandTex, bumpScale: 0.03, roughness: 1 }));
+sand.receiveShadow = true; scene.add(sand);
+
+// Ghiaia sparsa sull'anello
+{ const R = rng(77), N = 1100;
+  const peb = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0), new THREE.MeshStandardMaterial({ roughness: 0.8 }), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    const a = R() * Math.PI * 2, r = SAND_IN + 0.04 + R() * (ISLAND_R - SAND_IN - 0.08);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r, s = 0.018 + Math.pow(R(), 3) * 0.07;
+    q.setFromEuler(e.set(R() * 3, R() * 3, R() * 3));
+    m.compose(new THREE.Vector3(x, terrainY(x, z) + s * 0.3, z), q, new THREE.Vector3(s, s * 0.7, s));
+    peb.setMatrixAt(i, m);
+    const k = 0.35 + R() * 0.4; peb.setColorAt(i, c.setRGB(k, k * 0.96, k * 0.9));
+  }
+  peb.castShadow = true; peb.receiveShadow = true; scene.add(peb); }
+
+// Falesia dell'isola che sprofonda nell'ignoto
+const cliffGeo = new THREE.CylinderGeometry(ISLAND_R, 3.2, 9, 96, 6, true);
+{ const p = cliffGeo.attributes.position, R = rng(3);
+  for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y < 4.4) { const k = 1 + (R() - 0.5) * 0.12; p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); } }
+  cliffGeo.computeVertexNormals(); }
+rockTex.repeat.set(1, 1);
+const cliffTex = rockTex.clone(); cliffTex.needsUpdate = true; cliffTex.repeat.set(10, 3);
+const cliff = new THREE.Mesh(cliffGeo, new THREE.MeshStandardMaterial({ map: cliffTex, color: 0x9a8a78, roughness: 1, flatShading: true }));
+cliff.position.y = -0.25 - 4.5; cliff.receiveShadow = true; scene.add(cliff);
+
+/* ---------------- Pozza d'acqua piovana ---------------- */
+const poolG = new THREE.Group(); poolG.position.set(POOL.x, 0, POOL.z); scene.add(poolG);
+const wallTex = wetTex.clone(); wallTex.needsUpdate = true; wallTex.repeat.set(4, 1.5);
+const poolWall = new THREE.Mesh(new THREE.CylinderGeometry(POOL.r, POOL.r, POOL.depth, 64, 1, true),
+  new THREE.MeshStandardMaterial({ map: wallTex, side: THREE.BackSide, roughness: 0.7 }));
+poolWall.position.y = -POOL.depth / 2; poolWall.receiveShadow = true; poolG.add(poolWall);
+const poolFloor = new THREE.Mesh(new THREE.CircleGeometry(POOL.r, 64), new THREE.MeshStandardMaterial({ map: wetTex, roughness: 0.6, color: 0x7a6a5a }));
+poolFloor.rotation.x = -Math.PI / 2; poolFloor.position.y = -POOL.depth; poolG.add(poolFloor);
+const rim = new THREE.Mesh(new THREE.RingGeometry(POOL.r, POOL.r + 0.28, 64), new THREE.MeshStandardMaterial({ map: wetTex, roughness: 0.55, transparent: true, opacity: 0.85 }));
+rim.rotation.x = -Math.PI / 2; rim.position.y = 0.004; rim.receiveShadow = true; poolG.add(rim);
+const waterMat = new THREE.MeshStandardMaterial({ color: 0x2f6367, roughness: 0.06, metalness: 0.25, transparent: true, opacity: 0.82, envMapIntensity: 1.4 });
+const water = new THREE.Mesh(new THREE.CircleGeometry(POOL.r - 0.002, 64), waterMat);
+water.rotation.x = -Math.PI / 2; water.position.y = WATER_Y; poolG.add(water);
+// Volume torbido sotto la superficie
+const deep = new THREE.Mesh(new THREE.CylinderGeometry(POOL.r - 0.01, POOL.r - 0.01, POOL.depth + WATER_Y, 48, 1, true),
+  new THREE.MeshBasicMaterial({ color: 0x163c3e, transparent: true, opacity: 0.35, side: THREE.BackSide, depthWrite: false }));
+deep.position.y = (WATER_Y - POOL.depth) / 2; poolG.add(deep);
+
+// Cerchi di pioggia sull'acqua
+const ripples = [];
+const rippleGeo = new THREE.RingGeometry(0.9, 1, 32);
+function spawnRipple() {
+  const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * (POOL.r - 0.3);
+  const m = new THREE.Mesh(rippleGeo, new THREE.MeshBasicMaterial({ color: 0xcfe6e6, transparent: true, opacity: 0.5, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.set(Math.cos(a) * r, WATER_Y + 0.003, Math.sin(a) * r);
+  m.userData.t = 0; poolG.add(m); ripples.push(m);
+}
+
+/* ---------------- Blocchi di roccia levigata 3 × 4 × 2 ---------------- */
+const blockMat = new THREE.MeshStandardMaterial({ map: stoneTex, roughness: 0.16, metalness: 0.02, envMapIntensity: 0.9 });
+const boxes = [];  // collisori
+const JOINT = 0.012; // giunto sottilissimo tra i blocchi
+function addBlock(cx, y0, cz, sx, sy, sz) {
+  // sx, sy, sz è sempre una permutazione di 3, 4, 2
+  const g = new THREE.BoxGeometry(sx - JOINT, sy - JOINT, sz - JOINT);
+  const m = new THREE.Mesh(g, blockMat);
+  m.position.set(cx, y0 + sy / 2, cz); m.castShadow = m.receiveShadow = true; scene.add(m);
+  boxes.push({ minX: cx - sx / 2, maxX: cx + sx / 2, minY: y0, maxY: y0 + sy, minZ: cz - sz / 2, maxZ: cz + sz / 2 });
+}
+
+/* Formazione A — Basamento a gradoni, 6 m (4 blocchi posati di piatto, 2 m ciascuno)
+   Livello 1: due blocchi affiancati, impronta 4 × 6 m.
+   Livello 2: un blocco ruotato che scavalca il giunto tra i due di sotto.
+   Livello 3: un blocco incrociato al centro.   2 + 2 + 2 = 6 m. */
+{ const { x, z } = ALTAR_C;
+  addBlock(x, 0, z - 1.5, 4, 2, 3);
+  addBlock(x, 0, z + 1.5, 4, 2, 3);
+  addBlock(x, 2, z, 3, 2, 4);
+  addBlock(x, 4, z, 4, 2, 3); }
+
+/* Formazione B — Torre a coppie incrociate, 15 m (10 blocchi in piedi, 3 m ciascuno)
+   Ogni livello: due blocchi ritti affiancati = quadrato 4 × 4 m.
+   I livelli alternano l'orientamento di 90°, così ogni coppia lega i due blocchi sottostanti.
+   5 livelli × 3 m = 15 m; snellezza 15 / 4 = 3,75, baricentro sempre sull'asse. */
+{ const { x, z } = TOWER_C;
+  for (let i = 0; i < 5; i++) {
+    const y = i * 3;
+    if (i % 2 === 0) { addBlock(x - 1, y, z, 2, 3, 4); addBlock(x + 1, y, z, 2, 3, 4); }
+    else             { addBlock(x, y, z - 1, 4, 3, 2); addBlock(x, y, z + 1, 4, 3, 2); }
+  } }
+
+/* ---------------- Rocce ---------------- */
+const rocks = [];
+function rockGeo(seed) {
+  const g = new THREE.IcosahedronGeometry(1, 2); const p = g.attributes.position; const R = rng(seed);
+  const ph = [R() * 6, R() * 6, R() * 6, R() * 6, R() * 6, R() * 6];
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const n = 1 + 0.18 * Math.sin(v.x * 2.3 + ph[0]) * Math.sin(v.y * 2.1 + ph[1]) + 0.12 * Math.sin(v.z * 3.7 + ph[2]) + 0.07 * Math.sin((v.x + v.z) * 5.1 + ph[3]);
+    v.multiplyScalar(n); if (v.y < -0.35) v.y = -0.35 + (v.y + 0.35) * 0.3;
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); return g;
+}
+function freeSpot(x, z, r) {
+  if (Math.hypot(x, z) > ISLAND_R - 0.4 - r * 0.5) return false;
+  if (Math.hypot(x - POOL.x, z - POOL.z) < POOL.r + 0.5 + r) return false;
+  for (const b of boxes) if (x > b.minX - r - 0.6 && x < b.maxX + r + 0.6 && z > b.minZ - r - 0.6 && z < b.maxZ + r + 0.6) return false;
+  for (const k of rocks) if (Math.hypot(x - k.x, z - k.z) < k.r + r + 0.3) return false;
+  return true;
+}
+{ const R = rng(2024); let tries = 0;
+  const rockMat = new THREE.MeshStandardMaterial({ map: rockTex, roughness: 0.92, flatShading: true });
+  // alcune rocce grandi, poi via via più piccole
+  const sizes = [0.95, 0.8, 0.7, 0.6, 0.55, 0.45, 0.4, 0.35, 0.3, 0.3, 0.25, 0.22, 0.2, 0.18, 0.16, 0.15, 0.14, 0.12];
+  for (const s of sizes) {
+    while (tries++ < 4000) {
+      const a = R() * Math.PI * 2, d = Math.sqrt(R()) * (ISLAND_R - 0.5);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (!freeSpot(x, z, s)) continue;
+      const m = new THREE.Mesh(rockGeo(Math.floor(R() * 1e6)), rockMat.clone());
+      const sy = s * (0.55 + R() * 0.35);
+      m.scale.set(s * (0.9 + R() * 0.4), sy, s * (0.8 + R() * 0.4));
+      m.rotation.y = R() * Math.PI * 2;
+      m.position.set(x, terrainY(x, z) + sy * 0.2, z);
+      const tone = 0.75 + R() * 0.35; m.material.color.setRGB(tone, tone * 0.97, tone * 0.93);
+      m.castShadow = m.receiveShadow = true; scene.add(m);
+      rocks.push({ x, z, r: s * 0.85, top: m.position.y + sy * 0.85 });
+      break;
+    }
+  } }
+
+/* ---------------- L'ignoto: muri di nebbia viva ---------------- */
+const mistVS = `varying vec3 vW; varying vec2 vUv; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const mistFS = `
+  uniform float t; uniform float base; uniform vec3 c1; uniform vec3 c2; uniform float vertical;
+  varying vec3 vW; varying vec2 vUv;
+  float h(vec3 p){ return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }
+  float n(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+    return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x), mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x), f.y),
+               mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x), mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x), f.y), f.z); }
+  float fbm(vec3 p){ float s=0.0, a=0.5; for(int i=0;i<5;i++){ s+=a*n(p); p*=2.03; a*=0.5; } return s; }
+  void main(){
+    vec3 p = vW * 0.22 + vec3(t*0.03, -t*0.05, t*0.02);
+    float q = fbm(p + fbm(p*0.7 + t*0.01));
+    float a = base + smoothstep(0.35, 0.8, q) * 0.5;
+    float edge = mix(1.0, smoothstep(0.0, 0.18, vUv.y) * smoothstep(1.0, 0.7, vUv.y), vertical);
+    // la faccia esterna (vista da fuori, in panoramica) resta quasi trasparente
+    float near = (vertical > 0.5 && gl_FrontFacing) ? 0.12 : 1.0;
+    gl_FragColor = vec4(mix(c1, c2, q), clamp(a * edge * near, 0.0, 1.0));
+  }`;
+const mistMats = [];
+function mist(geo, base, vertical, c1, c2) {
+  const mat = new THREE.ShaderMaterial({ vertexShader: mistVS, fragmentShader: mistFS, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { t: { value: 0 }, base: { value: base }, vertical: { value: vertical }, c1: { value: new THREE.Color(c1) }, c2: { value: new THREE.Color(c2) } } });
+  mistMats.push(mat); return new THREE.Mesh(geo, mat);
+}
+const wall1 = mist(new THREE.CylinderGeometry(9.2, 9.2, 46, 96, 1, true), 0.30, 1, 0x5b636c, 0xc9cfd4); wall1.position.y = 4; scene.add(wall1);
+const wall2 = mist(new THREE.CylinderGeometry(13, 13, 60, 96, 1, true), 0.55, 1, 0x4b525b, 0xaab2ba); wall2.position.y = 6; scene.add(wall2);
+const floorMist = mist(new THREE.CircleGeometry(40, 64), 0.45, 0, 0x4b525b, 0xb9c0c6); floorMist.rotation.x = -Math.PI / 2; floorMist.position.y = -6; scene.add(floorMist);
+const roofMist = mist(new THREE.CircleGeometry(40, 64), 0.35, 0, 0x4b525b, 0xb9c0c6); roofMist.rotation.x = Math.PI / 2; roofMist.position.y = 30; scene.add(roofMist);
+
+// Pulviscolo che vaga nell'ignoto
+const dust = (() => { const N = 900, pos = new Float32Array(N * 3), R = rng(9);
+  for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, r = 8 + R() * 16; pos[i*3] = Math.cos(a) * r; pos[i*3+1] = -8 + R() * 30; pos[i*3+2] = Math.sin(a) * r; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xdfe4e8, size: 0.06, transparent: true, opacity: 0.55, depthWrite: false })); scene.add(p); return p; })();
+
+/* ---------------- Pioggia ---------------- */
+const rain = (() => { const N = 1800, pos = new Float32Array(N * 6), R = rng(4);
+  for (let i = 0; i < N; i++) { const a = R() * Math.PI * 2, r = Math.sqrt(R()) * 11, x = Math.cos(a) * r, z = Math.sin(a) * r, y = R() * 22 - 2;
+    pos.set([x, y, z, x + 0.02, y - 0.35, z], i * 6); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xc8d4dc, transparent: true, opacity: 0.35 })); l.visible = false; scene.add(l); return l; })();
+
+/* ---------------- Misure ---------------- */
+const measures = new THREE.Group(); scene.add(measures);
+function label(text, x, y, z, scale = 1) {
+  const c = document.createElement('canvas'); const ctx = c.getContext('2d');
+  const fs = 56; ctx.font = `600 ${fs}px "JetBrains Mono", monospace`;
+  const w = Math.ceil(ctx.measureText(text).width) + 40; c.width = w; c.height = fs + 30;
+  ctx.font = `600 ${fs}px "JetBrains Mono", monospace`;
+  ctx.fillStyle = 'rgba(24,27,31,0.78)'; ctx.fillRect(0, 0, w, c.height);
+  ctx.fillStyle = '#ece6da'; ctx.textBaseline = 'middle'; ctx.fillText(text, 20, c.height / 2 + 2);
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, fog: false, sizeAttenuation: false }));
+  const k = 0.036 * scale; s.scale.set(k * w / c.height, k, 1); s.position.set(x, y, z); s.renderOrder = 10; measures.add(s); return s;
+}
+function line(pts, color = 0xd9b26f) {
+  const g = new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p)));
+  const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color, depthTest: false, transparent: true, fog: false })); l.renderOrder = 9; measures.add(l);
+}
+// Torre: asta graduata ogni 3 m
+{ const x = TOWER_C.x - 2.6, z = TOWER_C.z + 2.3; line([[x, 0, z], [x, 15, z]]);
+  for (let y = 0; y <= 15; y += 3) line([[x - 0.15, y, z], [x + 0.15, y, z]]);
+  label('15 m', x, 15.6, z, 1.2); label('torre · 10 blocchi', x, 7.5, z, 0.8); }
+// Basamento
+{ const x = ALTAR_C.x + 2.5, z = ALTAR_C.z - 3.2; line([[x, 0, z], [x, 6, z]]);
+  for (let y = 0; y <= 6; y += 2) line([[x - 0.15, y, z], [x + 0.15, y, z]]);
+  label('6 m', x, 6.6, z, 1.2); label('basamento · 4 blocchi', ALTAR_C.x, 7.6, ALTAR_C.z, 0.8); }
+// Pozza: diametro e profondità
+line([[POOL.x - POOL.r, 0.05, POOL.z], [POOL.x + POOL.r, 0.05, POOL.z]], 0x8fd0d2);
+line([[POOL.x + POOL.r - 0.05, 0, POOL.z + 0.6], [POOL.x + POOL.r - 0.05, -POOL.depth, POOL.z + 0.6]], 0x8fd0d2);
+label('Ø 4 m · prof. 3 m', POOL.x, 1.0, POOL.z, 0.9);
+// Isola e anello
+line([[-ISLAND_R, 0.1, 0], [-SAND_IN, 0.1, 0]]);
+{ const pts = []; for (let i = 0; i <= 128; i++) { const a = i / 128 * Math.PI * 2; pts.push([Math.cos(a) * ISLAND_R, -0.2, Math.sin(a) * ISLAND_R]); } line(pts, 0x9aa3ab); }
+label('sabbia e ghiaia · 1 m', -6.2, 0.9, 1.4, 0.75);
+label('isola Ø 15 m', 0, 0.9, 7.9, 0.85);
+label('blocco 3 × 4 × 2 m', ALTAR_C.x + 1.4, 1.0, ALTAR_C.z + 3.6, 0.75);
+
+/* ---------------- Controlli ---------------- */
+const orbit = new THREE.OrbitControls(camera, canvas);
+orbit.target.set(0, 3.5, 0);
+orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+orbit.minDistance = 4; orbit.maxDistance = 30; orbit.maxPolarAngle = Math.PI * 0.62;
+orbit.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches; orbit.autoRotateSpeed = 0.35;
+camera.position.set(15, 11, 17);
+canvas.addEventListener('pointerdown', () => { orbit.autoRotate = false; });
+
+const SPAWN = { x: 0.25, z: -5.9 };
+const P = { x: SPAWN.x, z: SPAWN.z, y: 0, vy: 0, yaw: Math.PI, pitch: 0.08, diving: false };
+const EYE = 1.65, PR = 0.3, STEP = 0.45, SWIM_STEP = 1.7;
+let mode = 'orbit';
+const keys = {};
+let lockFailed = false;
+
+const help = document.getElementById('help');
+const helpOrbit = 'Trascina per ruotare · rotellina o pizzico per lo zoom · <kbd>M</kbd> misure · <kbd>R</kbd> pioggia';
+const helpWalk = () => (matchMedia('(pointer: coarse)').matches
+  ? 'Lato sinistro: trascina per muoverti · lato destro: trascina per guardare'
+  : 'Clic per guardarti intorno · <kbd>W A S D</kbd> muovi · <kbd>Spazio</kbd> salta / nuota su · <kbd>C</kbd> immergiti · <kbd>Shift</kbd> corri · <kbd>Esc</kbd> libera il mouse');
+help.innerHTML = helpOrbit;
+
+const toastEl = document.getElementById('toast'); let toastT = 0;
+function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); toastT = 2.4; }
+
+const btnMode = document.getElementById('btnMode');
+function setMode(m) {
+  mode = m;
+  orbit.enabled = m === 'orbit';
+  btnMode.textContent = m === 'orbit' ? "Cammina sull'isola" : 'Vista panoramica';
+  btnMode.setAttribute('aria-pressed', String(m === 'walk'));
+  document.getElementById('cross').hidden = m !== 'walk';
+  help.innerHTML = m === 'orbit' ? helpOrbit : helpWalk();
+  if (m === 'orbit') { if (document.pointerLockElement) document.exitPointerLock(); camera.position.set(15, 11, 17); orbit.target.set(0, 3.5, 0); camera.up.set(0, 1, 0); scene.fog.density = 0.018; scene.fog.color.copy(VOID); document.getElementById('under').hidden = true; }
+}
+btnMode.addEventListener('click', () => setMode(mode === 'orbit' ? 'walk' : 'orbit'));
+function teleport(x, z, y, lookX, lookZ, name) { setMode('walk'); P.x = x; P.z = z; P.y = y; P.vy = 0; P.diving = false; P.pitch = y > 10 ? -1.1 : -0.75; P.yaw = Math.atan2(-(lookX - x), -(lookZ - z)); toast(name); }
+document.getElementById('btnTower').addEventListener('click', () => teleport(TOWER_C.x + 1.5, TOWER_C.z + 1.5, 15, POOL.x, POOL.z, 'In cima alla torre · 15 m'));
+document.getElementById('btnAltar').addEventListener('click', () => teleport(ALTAR_C.x - 1.3, ALTAR_C.z, 6, TOWER_C.x, TOWER_C.z, 'In cima al basamento · 6 m'));
+const btnMeasures = document.getElementById('btnMeasures');
+function toggleMeasures() { measures.visible = !measures.visible; btnMeasures.setAttribute('aria-pressed', String(measures.visible)); }
+btnMeasures.addEventListener('click', toggleMeasures);
+const btnRain = document.getElementById('btnRain');
+function toggleRain() { rain.visible = !rain.visible; btnRain.setAttribute('aria-pressed', String(rain.visible)); }
+btnRain.addEventListener('click', toggleRain);
+const hud = document.getElementById('hud'), tp = document.getElementById('togglePanel');
+tp.addEventListener('click', () => { const c = hud.classList.toggle('collapsed'); tp.textContent = c ? 'Scheda' : 'Chiudi'; tp.setAttribute('aria-expanded', String(!c)); });
+if (window.innerWidth < 520) { hud.classList.add('collapsed'); tp.textContent = 'Scheda'; tp.setAttribute('aria-expanded', 'false'); }
+
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'BUTTON' && (e.code === 'Space' || e.code === 'Enter')) return;
+  keys[e.code] = true;
+  if (e.code === 'KeyM') toggleMeasures();
+  if (e.code === 'KeyR') toggleRain();
+  if (e.code === 'KeyC') P.diving = true;
+  if (mode === 'walk' && e.code === 'Space') e.preventDefault();
+});
+addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'KeyC') P.diving = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+// Sguardo: pointer lock se disponibile, altrimenti trascinamento
+canvas.addEventListener('click', () => {
+  if (mode !== 'walk' || lockFailed || matchMedia('(pointer: coarse)').matches) return;
+  try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { lockFailed = true; }); } catch (_) { lockFailed = true; }
+});
+document.addEventListener('pointerlockerror', () => { lockFailed = true; });
+document.addEventListener('mousemove', e => {
+  if (mode === 'walk' && document.pointerLockElement === canvas) look(e.movementX, e.movementY);
+});
+function look(dx, dy) { P.yaw -= dx * 0.0025; P.pitch = Math.max(-1.45, Math.min(1.45, P.pitch - dy * 0.0025)); }
+
+// Trascinamento (mouse senza lock e touch): sinistra muove, destra guarda
+const touch = { move: null, look: null, mx: 0, mz: 0 };
+canvas.addEventListener('pointerdown', e => {
+  if (mode !== 'walk' || document.pointerLockElement) return;
+  const coarse = e.pointerType === 'touch';
+  if (coarse && e.clientX < innerWidth / 2) touch.move = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  else touch.look = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  if (mode !== 'walk') return;
+  if (touch.look && e.pointerId === touch.look.id) { look((e.clientX - touch.look.x) * 1.6, (e.clientY - touch.look.y) * 1.6); touch.look.x = e.clientX; touch.look.y = e.clientY; }
+  if (touch.move && e.pointerId === touch.move.id) { touch.mx = Math.max(-1, Math.min(1, (e.clientX - touch.move.x) / 60)); touch.mz = Math.max(-1, Math.min(1, (e.clientY - touch.move.y) / 60)); }
+});
+function endPointer(e) {
+  if (touch.look && e.pointerId === touch.look.id) touch.look = null;
+  if (touch.move && e.pointerId === touch.move.id) { touch.move = null; touch.mx = touch.mz = 0; }
+}
+canvas.addEventListener('pointerup', endPointer); canvas.addEventListener('pointercancel', endPointer);
+
+/* ---------------- Fisica del camminatore ---------------- */
+const distPool = (x, z) => Math.hypot(x - POOL.x, z - POOL.z);
+function inWater(x, z, y) { return distPool(x, z) < POOL.r && y < WATER_Y; }
+
+function supportAt(x, z, feet, step) {
+  let s = distPool(x, z) < POOL.r - 0.05 ? -POOL.depth : terrainY(x, z);
+  for (const b of boxes) if (x > b.minX - PR * 0.5 && x < b.maxX + PR * 0.5 && z > b.minZ - PR * 0.5 && z < b.maxZ + PR * 0.5 && b.maxY <= feet + step + 0.001) s = Math.max(s, b.maxY);
+  for (const k of rocks) if (Math.hypot(x - k.x, z - k.z) < k.r * 0.8 && k.top <= feet + step + 0.001) s = Math.max(s, k.top);
+  return s;
+}
+function blocked(x, z, feet, step) {
+  if (Math.hypot(x, z) > EDGE_LIMIT) return 'edge';
+  for (const b of boxes) if (x > b.minX - PR && x < b.maxX + PR && z > b.minZ - PR && z < b.maxZ + PR && b.maxY > feet + step && b.minY < feet + 1.75) return 'wall';
+  for (const k of rocks) if (Math.hypot(x - k.x, z - k.z) < k.r + PR * 0.6 && k.top > feet + step) return 'wall';
+  // pareti della pozza: da dentro, il bordo è un gradino alto quanto la profondità
+  if (feet < -0.05 && distPool(x, z) > POOL.r - PR && 0 > feet + step) return 'wall';
+  return null;
+}
+let edgeCooldown = 0;
+function stepWalker(dt) {
+  const fwd = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) - touch.mz;
+  const side = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0) + touch.mx;
+  const swimming = inWater(P.x, P.z, P.y + 0.6);
+  const speed = (swimming ? 1.6 : (keys.ShiftLeft || keys.ShiftRight ? 5.5 : 3)) * dt;
+  const sx = Math.sin(P.yaw), cz = Math.cos(P.yaw);
+  let dx = (-sx * fwd + cz * side), dz = (-cz * fwd - sx * side);
+  const len = Math.hypot(dx, dz); if (len > 1) { dx /= len; dz /= len; }
+  dx *= speed; dz *= speed;
+  const step = swimming ? SWIM_STEP : STEP;
+  let hit = null;
+  const bx = blocked(P.x + dx, P.z, P.y, step); if (!bx) P.x += dx; else hit = hit || bx;
+  const bz = blocked(P.x, P.z + dz, P.y, step); if (!bz) P.z += dz; else hit = hit || bz;
+  if (hit === 'edge' && edgeCooldown <= 0) { toast('Oltre c’è solo l’ignoto. Non si passa.'); edgeCooldown = 3; }
+
+  // gravità, salto, galleggiamento
+  let support = supportAt(P.x, P.z, P.y, step);
+  const wet = distPool(P.x, P.z) < POOL.r && P.y < WATER_Y;
+  if (wet) {
+    const float = WATER_Y - 1.35;              // a galla: testa fuori dall'acqua
+    if (keys.Space) P.vy = Math.min(P.vy + 9 * dt, 1.6);
+    else if (P.diving) P.vy = Math.max(P.vy - 6 * dt, -1.4);
+    else P.vy += (P.y < float ? 6 : -4) * dt, P.vy *= 0.92;
+  } else {
+    P.vy -= 9.81 * dt;
+    if (keys.Space && P.y <= support + 0.01) P.vy = 4.6;
+  }
+  P.y += P.vy * dt;
+  if (P.y <= support) {
+    if (support - P.y < step + 0.05 || P.vy <= 0) { P.y = Math.max(P.y, support); if (P.vy < 0) P.vy = 0; }
+  }
+  if (wet && P.y > WATER_Y - 1.2 && !keys.Space && P.vy > 0) P.vy *= 0.5;
+
+  camera.position.set(P.x, P.y + EYE, P.z);
+  camera.rotation.set(P.pitch, P.yaw, 0, 'YXZ');
+
+  // l'ignoto si addensa avvicinandosi al bordo; sott'acqua tutto si fa verde-torbido
+  const under = distPool(P.x, P.z) < POOL.r && camera.position.y < WATER_Y;
+  document.getElementById('under').hidden = !under;
+  if (under) { scene.fog.color.setHex(0x1d4a4c); scene.fog.density = 0.45; }
+  else { scene.fog.color.copy(VOID); scene.fog.density = 0.018 + Math.max(0, Math.hypot(P.x, P.z) - 5.5) * 0.035; }
+}
+
+/* ---------------- Ciclo ---------------- */
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const altEl = document.getElementById('alt');
+const clock = new THREE.Clock(); let rippleAcc = 0;
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  for (const m of mistMats) m.uniforms.t.value = t;
+  dust.rotation.y = t * 0.01;
+  waterMat.opacity = 0.8 + Math.sin(t * 0.7) * 0.03;
+
+  if (rain.visible) {
+    const p = rain.geometry.attributes.position, a = p.array;
+    for (let i = 0; i < a.length; i += 6) { a[i + 1] -= 14 * dt; a[i + 4] -= 14 * dt; if (a[i + 4] < -1) { a[i + 1] += 22; a[i + 4] += 22; } }
+    p.needsUpdate = true;
+    rippleAcc += dt * 14; while (rippleAcc > 1) { spawnRipple(); rippleAcc--; }
+  } else if (Math.random() < dt * 0.4) spawnRipple(); // qualche goccia isolata
+  for (let i = ripples.length - 1; i >= 0; i--) { const r = ripples[i]; r.userData.t += dt; const k = r.userData.t; r.scale.setScalar(0.05 + k * 0.45); r.material.opacity = Math.max(0, 0.5 - k * 0.5); if (k > 1) { poolG.remove(r); r.material.dispose(); ripples.splice(i, 1); } }
+
+  if (mode === 'walk') { stepWalker(dt); edgeCooldown -= dt; altEl.textContent = 'quota ' + P.y.toFixed(2).replace('.', ',') + ' m'; }
+  else { orbit.update(); altEl.textContent = 'vista panoramica'; }
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastEl.classList.remove('show'); }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
